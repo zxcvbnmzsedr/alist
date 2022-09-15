@@ -7,6 +7,7 @@ import (
 	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/pkg/utils"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -60,7 +61,7 @@ func (d *Odysee) List(ctx context.Context, dir model.Obj, args model.ListArgs) (
 		})
 	} else if id != "" && len(strings.Split(path, "/")) == 2 {
 		// 二级查询频道文件列表
-		files, err := d.listChannelFile(id)
+		files, err := d.listChannelFile(id, 1)
 		if err != nil {
 			return nil, err
 		}
@@ -102,11 +103,24 @@ func (d *Odysee) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 }
 
 func (d *Odysee) Remove(ctx context.Context, obj model.Obj) error {
+	id := obj.GetID()
+	if strings.Contains(id, "#") {
+		claimId := strings.Split(id, "#")[1]
+		return d.DeleteStreamByClaimId(claimId)
+	}
 	return nil
 }
 
 func (d *Odysee) Put(ctx context.Context, dstDir model.Obj, stream model.FileStreamer, up driver.UpdateProgress) error {
-	return nil
+	tempFile, err := utils.CreateTempFile(stream.GetReadCloser())
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
+	}()
+	return d.upCommit(tempFile, stream)
 }
 
 var _ driver.Driver = (*Odysee)(nil)

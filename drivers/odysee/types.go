@@ -38,6 +38,7 @@ type ChannelItem struct {
 	CanonicalUrl string `json:"canonical_url"`
 	ShortUrl     string `json:"short_url"`
 	Value        Value  `json:"value"`
+	ValueType    string `json:"value_type"`
 }
 type Value struct {
 	Source Source `json:"source"`
@@ -64,7 +65,7 @@ func fileToObj(f ChannelItem, level int) *model.ObjThumb {
 		size, _ := strconv.ParseInt(f.Value.Source.Size, 10, 64)
 		return &model.ObjThumb{
 			Object: model.Object{
-				ID:       f.ShortUrl,
+				ID:       f.PermanentUrl,
 				Name:     f.Value.Source.Name,
 				Size:     size,
 				IsFolder: false,
