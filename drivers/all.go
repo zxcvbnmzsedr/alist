@@ -12,6 +12,7 @@ import (
 	_ "github.com/alist-org/alist/v3/drivers/google_drive"
 	_ "github.com/alist-org/alist/v3/drivers/local"
 	_ "github.com/alist-org/alist/v3/drivers/mediatrack"
+	_ "github.com/alist-org/alist/v3/drivers/odysee"
 	_ "github.com/alist-org/alist/v3/drivers/onedrive"
 	_ "github.com/alist-org/alist/v3/drivers/pikpak"
 	_ "github.com/alist-org/alist/v3/drivers/quark"
