@@ -63,7 +63,7 @@ func (d *Odysee) List(ctx context.Context, dir model.Obj, args model.ListArgs) (
 			return files[i].IsDir() != files[j].IsDir()
 		})
 	} else if strings.HasPrefix(id, "collection_") {
-		// 三级查询播放列表下的文件
+		// 三级查询播放列表 下的文件
 		id = strings.Replace(id, "collection_", "", 1)
 		files, err = d.listPlayList(id)
 	}
