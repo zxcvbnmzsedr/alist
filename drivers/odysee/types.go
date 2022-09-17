@@ -3,7 +3,7 @@ package odysee
 import (
 	"github.com/alist-org/alist/v3/internal/model"
 	"strconv"
-	"strings"
+	"time"
 )
 
 type Request struct {
@@ -39,9 +39,51 @@ type ChannelItem struct {
 	ShortUrl     string `json:"short_url"`
 	Value        Value  `json:"value"`
 	ValueType    string `json:"value_type"`
+	Timestamp    int64  `json:"timestamp"`
 }
+type Thumbnail struct {
+	Url string `json:"url"`
+}
+
+func (c *ChannelItem) GetSize() int64 {
+	size, _ := strconv.ParseInt(c.Value.Source.Size, 10, 64)
+	return size
+}
+func (c *ChannelItem) GetName() string {
+	if c.ValueType == "stream" {
+		return c.Value.Source.Name
+	}
+	if c.Value.Title != "" {
+		return c.Value.Title
+	}
+	return c.Name
+}
+func (c *ChannelItem) ModTime() time.Time {
+	return time.Unix(c.Timestamp, 0)
+}
+func (c *ChannelItem) IsDir() bool {
+	return c.ValueType != "stream"
+}
+func (c *ChannelItem) GetID() string {
+	if c.ValueType == "stream" {
+		return c.PermanentUrl
+	}
+	if c.ValueType == "collection" {
+		return "collection_" + c.ClaimId
+	}
+	return "channel_" + c.ClaimId
+}
+func (c *ChannelItem) GetPath() string {
+	return c.PermanentUrl
+}
+func (c *ChannelItem) Thumb() string {
+	return c.Value.Thumbnail.Url
+}
+
 type Value struct {
-	Source Source `json:"source"`
+	Thumbnail Thumbnail `json:"thumbnail"`
+	Source    Source    `json:"source"`
+	Title     string    `json:"title"`
 }
 type Source struct {
 	Name string `json:"name"`
@@ -51,26 +93,16 @@ type Detail struct {
 	StreamingUrl string `json:"streaming_url"`
 }
 
-func fileToObj(f ChannelItem, level int) *model.ObjThumb {
-	if level == 0 {
-		return &model.ObjThumb{
-			Object: model.Object{
-				ID:       f.ClaimId,
-				Name:     strings.ReplaceAll(f.Name, "@", ""),
-				Size:     0,
-				IsFolder: true,
-			},
-		}
-	} else {
-		size, _ := strconv.ParseInt(f.Value.Source.Size, 10, 64)
-		return &model.ObjThumb{
-			Object: model.Object{
-				ID:       f.PermanentUrl,
-				Name:     f.Value.Source.Name,
-				Size:     size,
-				IsFolder: false,
-			},
-		}
+func fileToObj(f ChannelItem) *model.ObjThumb {
+	return &model.ObjThumb{
+		Object: model.Object{
+			ID:       f.GetID(),
+			Name:     f.GetName(),
+			Size:     f.GetSize(),
+			IsFolder: f.IsDir(),
+			Modified: f.ModTime(),
+		},
+		Thumbnail: model.Thumbnail{Thumbnail: f.Thumb()},
 	}
 
 }

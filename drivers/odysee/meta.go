@@ -6,8 +6,9 @@ import (
 )
 
 type Addition struct {
-	driver.RootID
-	AuthToken string `json:"authToken" required:"true"`
+	driver.RootPath
+	AuthToken         string `json:"authToken" required:"true"`
+	SubscribeChannels string `json:"subscribeChannels"`
 }
 
 var config = driver.Config{

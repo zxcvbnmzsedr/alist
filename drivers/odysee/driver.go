@@ -8,6 +8,7 @@ import (
 	"github.com/alist-org/alist/v3/pkg/utils"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -49,28 +50,29 @@ func (d *Odysee) Drop(ctx context.Context) error {
 
 func (d *Odysee) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]model.Obj, error) {
 	id := dir.GetID()
-	path := dir.GetPath()
-	if id == "" && path == "" {
-		// 一级查询频道
-		files, err := d.listChannel()
-		if err != nil {
-			return nil, err
-		}
-		return utils.SliceConvert(files, func(src ChannelItem) (model.Obj, error) {
-			return fileToObj(src, 0), nil
+	var files []ChannelItem
+	var err error
+	if id == "" && dir.IsDir() {
+		// 一级直接播放列表
+		files, err = d.listChannel(d.SubscribeChannels)
+	} else if strings.HasPrefix(id, "channel_") {
+		// 二级查询频道下的文件
+		id = strings.Replace(id, "channel_", "", 1)
+		files, err = d.listChannelFile(id, 1)
+		sort.SliceStable(files, func(i, j int) bool {
+			return files[i].IsDir() != files[j].IsDir()
 		})
-	} else if id != "" && len(strings.Split(path, "/")) == 2 {
-		// 二级查询频道文件列表
-		files, err := d.listChannelFile(id, 1)
-		if err != nil {
-			return nil, err
-		}
-		return utils.SliceConvert(files, func(src ChannelItem) (model.Obj, error) {
-			return fileToObj(src, 1), nil
-		})
+	} else if strings.HasPrefix(id, "collection_") {
+		// 三级查询播放列表下的文件
+		id = strings.Replace(id, "collection_", "", 1)
+		files, err = d.listPlayList(id)
 	}
-	return nil, nil
-
+	if err != nil {
+		return nil, err
+	}
+	return utils.SliceConvert(files, func(src ChannelItem) (model.Obj, error) {
+		return fileToObj(src), nil
+	})
 }
 
 func (d *Odysee) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
@@ -120,7 +122,7 @@ func (d *Odysee) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 		_ = tempFile.Close()
 		_ = os.Remove(tempFile.Name())
 	}()
-	return d.upCommit(tempFile, stream)
+	return d.upCommit(dstDir, tempFile, stream)
 }
 
 var _ driver.Driver = (*Odysee)(nil)

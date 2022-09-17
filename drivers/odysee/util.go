@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func (d *Odysee) request(pathname string, method string, param map[string]any, c
 	return res.Body(), nil
 }
 
-func (d *Odysee) listChannel() ([]ChannelItem, error) {
+func (d *Odysee) listChannel(subscribeChannels string) ([]ChannelItem, error) {
 	res := make([]ChannelItem, 0)
 	var resp Resp[ChannelItems]
 	_, err := d.request("channel_list", http.MethodPost, map[string]any{
@@ -54,17 +55,40 @@ func (d *Odysee) listChannel() ([]ChannelItem, error) {
 		return nil, errors.New(strconv.Itoa(resp.Error.Code) + resp.Error.Message)
 	}
 	res = append(res, resp.Result.Items...)
-
+	channels, _ := d.listByChannelIds(subscribeChannels)
+	if channels != nil {
+		res = append(res, channels...)
+	}
 	return res, nil
+}
+
+func (d *Odysee) listByChannelIds(subscribeChannels string) ([]ChannelItem, error) {
+	if subscribeChannels != "" {
+		channelIds := strings.Split(subscribeChannels, ",")
+		var resp Resp[map[string]ChannelItem]
+		_, err := d.request("resolve", http.MethodPost, map[string]any{
+			"urls": channelIds,
+		}, nil, &resp)
+		if err != nil {
+			return nil, err
+		}
+		var res []ChannelItem
+		for _, value := range resp.Result {
+			res = append(res, value)
+		}
+		return res, nil
+
+	}
+	return nil, nil
 }
 
 func (d *Odysee) listChannelFile(id string, page int) ([]ChannelItem, error) {
 	res := make([]ChannelItem, 0)
 	var resp Resp[ChannelItems]
-	_, err := d.request("claim_list", http.MethodPost, map[string]any{
-		"page_size":  20,
-		"page":       page,
-		"channel_id": id,
+	_, err := d.request("claim_search", http.MethodPost, map[string]any{
+		"page_size":   50,
+		"page":        page,
+		"channel_ids": [1]string{id},
 	}, nil, &resp)
 	if err != nil {
 		return nil, err
@@ -76,19 +100,30 @@ func (d *Odysee) listChannelFile(id string, page int) ([]ChannelItem, error) {
 		resNext, _ := d.listChannelFile(id, page+1)
 		res = append(res, resNext...)
 	}
-
 	res = append(res, resp.Result.Items...)
-
-	result := make([]ChannelItem, 0)
-
-	for i := range res {
-		if res[i].ValueType == "stream" {
-			result = append(result, res[i])
-		}
-	}
-	return result, nil
+	return res, nil
 }
 
+func (d *Odysee) listPlayList(id string) ([]ChannelItem, error) {
+	res := make([]ChannelItem, 0)
+	var resp Resp[ChannelItems]
+	_, err := d.request("collection_resolve", http.MethodPost, map[string]any{
+		"claim_id": id,
+	}, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != (Error{}) {
+		return nil, errors.New(strconv.Itoa(resp.Error.Code) + resp.Error.Message)
+	}
+
+	for i := range resp.Result.Items {
+		if resp.Result.Items[i] != (ChannelItem{}) {
+			res = append(res, resp.Result.Items[i])
+		}
+	}
+	return res, nil
+}
 func (d *Odysee) getFileDetail(uri string) (Detail, error) {
 	var resp Resp[Detail]
 	_, err := d.request("get", http.MethodPost, map[string]any{
@@ -116,7 +151,7 @@ func (d *Odysee) DeleteStreamByClaimId(id string) error {
 	return nil
 }
 
-func (d *Odysee) upCommit(tempFile *os.File, stream model.FileStreamer) error {
+func (d *Odysee) upCommit(dstDir model.Obj, tempFile *os.File, stream model.FileStreamer) error {
 	var resp Resp[Detail]
 	_, err := d.request("publish", http.MethodPost, nil, func(req *resty.Request) {
 		data := &Request{
@@ -131,7 +166,7 @@ func (d *Odysee) upCommit(tempFile *os.File, stream model.FileStreamer) error {
 				"blocking":      false,
 				"preview":       false,
 				"license":       "None",
-				"channel_id":    "f976dc1d600cd39d379eb71159472a4d054c628a",
+				"channel_id":    dstDir.GetID(),
 				"file_path":     "__POST_FILE__",
 				"optimize_file": false,
 			},
