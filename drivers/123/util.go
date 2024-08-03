@@ -1,9 +1,9 @@
 package _123
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"hash/crc32"
 	"math"
 	"math/rand"
@@ -15,8 +15,9 @@ import (
 
 	"github.com/alist-org/alist/v3/drivers/base"
 	"github.com/alist-org/alist/v3/pkg/utils"
-	resty "github.com/go-resty/resty/v2"
+	"github.com/go-resty/resty/v2"
 	jsoniter "github.com/json-iterator/go"
+	log "github.com/sirupsen/logrus"
 )
 
 // do others that not defined in Driver interface
@@ -233,23 +234,22 @@ func (d *Pan123) request(url string, method string, callback base.ReqCallback, r
 	return body, nil
 }
 
-func (d *Pan123) getFiles(parentId string, name string) ([]File, error) {
+func (d *Pan123) getFiles(ctx context.Context, parentId string, name string) ([]File, error) {
 	page := 1
 	total := 0
 	res := make([]File, 0)
 	// 2024-02-06 fix concurrency by 123pan
 	for {
-		if !d.APIRateLimit(FileList) {
-			time.Sleep(time.Millisecond * 200)
-			continue
+		if err := d.APIRateLimit(ctx, FileList); err != nil {
+			return nil, err
 		}
 		var resp Files
 		query := map[string]string{
 			"driveId":              "0",
 			"limit":                "100",
 			"next":                 "0",
-			"orderBy":              d.OrderBy,
-			"orderDirection":       d.OrderDirection,
+			"orderBy":              "file_id",
+			"orderDirection":       "desc",
 			"parentFileId":         parentId,
 			"trashed":              "false",
 			"SearchData":           "",
@@ -259,12 +259,13 @@ func (d *Pan123) getFiles(parentId string, name string) ([]File, error) {
 			"operateType":          "4",
 			"inDirectSpace":        "false",
 		}
-		_, err := d.request(FileList, http.MethodGet, func(req *resty.Request) {
+		_res, err := d.request(FileList, http.MethodGet, func(req *resty.Request) {
 			req.SetQueryParams(query)
 		}, &resp)
 		if err != nil {
 			return nil, err
 		}
+		log.Debug(string(_res))
 		page++
 		res = append(res, resp.Data.InfoList...)
 		total = resp.Data.Total

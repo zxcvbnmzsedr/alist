@@ -6,7 +6,8 @@ require (
 	github.com/SheltonZhu/115driver v1.0.25
 	github.com/Xhofe/go-cache v0.0.0-20220723083548-714439c8af9a
 	github.com/Xhofe/rateg v0.0.0-20230728072201-251a4e1adad4
-	github.com/alist-org/gofakes3 v0.0.6
+	github.com/alist-org/gofakes3 v0.0.7
+	github.com/alist-org/times v0.0.0-20240721124654-efa0c7d3ad92
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.54.19
@@ -20,7 +21,6 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/disintegration/imaging v1.6.2
-	github.com/djherbis/times v1.6.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564
 	github.com/foxxorcat/mopan-sdk-go v0.1.6
@@ -37,7 +37,7 @@ require (
 	github.com/ipfs/go-ipfs-api v0.7.0
 	github.com/jlaffaye/ftp v0.2.0
 	github.com/json-iterator/go v1.1.12
-	github.com/larksuite/oapi-sdk-go/v3 v3.2.8
+	github.com/larksuite/oapi-sdk-go/v3 v3.3.0
 	github.com/maruel/natural v1.1.1
 	github.com/meilisearch/meilisearch-go v0.27.0
 	github.com/minio/sio v0.4.0
@@ -59,7 +59,7 @@ require (
 	github.com/xhofe/wopan-sdk-go v0.1.3
 	github.com/zzzhr1990/go-common-entity v0.0.0-20221216044934-fd1c571e3a22
 	golang.org/x/crypto v0.25.0
-	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/image v0.18.0
 	golang.org/x/net v0.27.0
 	golang.org/x/oauth2 v0.21.0
