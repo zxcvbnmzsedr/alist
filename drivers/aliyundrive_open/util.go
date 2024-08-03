@@ -2,7 +2,11 @@ package aliyundrive_open
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -242,7 +246,7 @@ func (d *AliyundriveOpen) getRefreshTokenByTV(code string, isRefresh bool) error
 }
 
 func (d *AliyundriveOpen) _getRefreshTokenByTV(code string, isRefresh bool) (refreshToken, accessToken string, err error) {
-	url := "http://api.extscreen.com/aliyundrive/token"
+	url := "http://api.extscreen.com/aliyundrive/v2/token"
 	var resp RefreshTokenAuthResp
 	body := ""
 	if isRefresh {
@@ -250,7 +254,7 @@ func (d *AliyundriveOpen) _getRefreshTokenByTV(code string, isRefresh bool) (ref
 	} else {
 		body = fmt.Sprintf("code=%s", code)
 	}
-
+	//原接口404，现更新为新的加密接口
 	res, err := base.RestyClient.R().
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetBody(body).
@@ -260,9 +264,45 @@ func (d *AliyundriveOpen) _getRefreshTokenByTV(code string, isRefresh bool) (ref
 		return "", "", err
 	}
 
-	refresh, access := resp.Data.RefreshToken, resp.Data.AccessToken
+	ciphertext, iv := resp.Data.Ciphertext, resp.Data.Iv
+	key := "^(i/x>>5(ebyhumz*i1wkpk^orIs^Na."
+	decodeIv, _ := hex.DecodeString(iv)
+
+	encrypted, err := Decrypt([]byte(key), decodeIv, ciphertext)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to refresh token: decrypt refresh token error, resp: %s", res.String())
+	}
+	encryptedData := &EncryptedToken{}
+	err = json.Unmarshal(encrypted, encryptedData)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to refresh token: parse refresh token error, resp: %s", res.String())
+	}
+
+	refresh, access := encryptedData.RefreshToken, encryptedData.AccessToken
 	if refresh == "" {
 		return "", "", fmt.Errorf("failed to refresh token: refresh token is empty, resp: %s", res.String())
 	}
 	return refresh, access, nil
+}
+
+func Decrypt(key, iv []byte, ciphertext string) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	decodedCiphertext, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return nil, err
+	}
+	decryptedData := make([]byte, len(decodedCiphertext))
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(decryptedData, decodedCiphertext)
+	return pkcs7Unpadding(decryptedData), nil
+}
+
+// 对使用PKCS7填充方式的数据进行去填充
+func pkcs7Unpadding(data []byte) []byte {
+	length := len(data)
+	unpadding := int(data[length-1])
+	return data[:(length - unpadding)]
 }
