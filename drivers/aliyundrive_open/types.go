@@ -101,11 +101,11 @@ type RefreshTokenAuthResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Code         string `json:"code"`
-		Message      string `json:"message"`
-		TokenType    string `json:"token_type"`
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIN    int    `json:"expires_in"`
+		Ciphertext string `json:"ciphertext"`
+		Iv         string `json:"iv"`
 	}
+}
+type EncryptedToken struct {
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
 }
